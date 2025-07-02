@@ -31,7 +31,7 @@
   </div>
   <div id="game"></div>
   <div id="over">¡Juego Terminado!</div>
-  <button onclick="reiniciar()">Reiniciar</button>
+  <button id="reiniciarBtn">Reiniciar</button>
 
   <script>
     // Constantes del juego
@@ -47,10 +47,8 @@
     };
     const COLORS = ["I","J","L","O","S","T","Z"];
     let grid = [], puntaje = 0, juegoTerminado = false;
-
     // Pieza actual
     let pieza, pos, forma, tipo;
-
     // Inicializa la grilla
     function crearGrid() {
       grid = [];
@@ -60,7 +58,6 @@
         grid.push(fila);
       }
     }
-
     // Dibuja la grilla en HTML
     function draw() {
       let gameDiv = document.getElementById('game');
@@ -88,7 +85,6 @@
         }
       }
     }
-
     // Nueva pieza aleatoria
     function nuevaPieza() {
       tipo = COLORS[Math.floor(Math.random()*COLORS.length)];
@@ -100,7 +96,6 @@
         document.getElementById('over').style.display = 'block';
       }
     }
-
     // Chequea colisiones
     function choca(p, f) {
       for (let r=0; r<f.length; r++) {
@@ -114,7 +109,6 @@
       }
       return false;
     }
-
     // Fija la pieza en la grilla
     function fijar() {
       for (let r=0; r<forma.length; r++) {
@@ -125,7 +119,6 @@
         }
       }
     }
-
     // Elimina filas completas
     function limpiarFilas() {
       let filasCompletas = 0;
@@ -139,7 +132,6 @@
       }
       if (filasCompletas > 0) puntaje += [0,40,100,300,1200][filasCompletas];
     }
-
     // Rota la pieza
     function rotar() {
       let nueva = [];
@@ -151,8 +143,59 @@
       }
       if (!choca(pos, nueva)) forma = nueva;
     }
-
     // Movimiento
     function mover(dx,dy) {
       let nueva = [pos[0]+dy,pos[1]+dx];
-      if (!choca(nueva, forma)) pos
+      if (!choca(nueva, forma)) pos = nueva;
+    }
+    // Caída rápida
+    function caidaTotal() {
+      while (!choca([pos[0]+1,pos[1]], forma)) pos[0]++;
+      tick();
+    }
+    // Lógica de caída
+    function tick() {
+      if (!pieza || juegoTerminado) return;
+      let nueva = [pos[0]+1,pos[1]];
+      if (!choca(nueva, forma)) {
+        pos = nueva;
+      } else {
+        fijar();
+        limpiarFilas();
+        nuevaPieza();
+        actualizarScore();
+      }
+      draw();
+    }
+    // Actualiza el puntaje en pantalla
+    function actualizarScore() {
+      document.getElementById('score').innerText = 'Puntaje: ' + puntaje;
+    }
+    // Reinicia el juego
+    function reiniciar() {
+      crearGrid();
+      puntaje = 0; juegoTerminado = false; document.getElementById('over').style.display = 'none';
+      nuevaPieza();
+      actualizarScore();
+      draw();
+    }
+    // Teclado
+    document.addEventListener('keydown', function(e) {
+      if (juegoTerminado) return;
+      if (e.key === "ArrowLeft") mover(-1,0), draw();
+      else if (e.key === "ArrowRight") mover(1,0), draw();
+      else if (e.key === "ArrowDown") mover(0,1), tick();
+      else if (e.key === "ArrowUp") rotar(), draw();
+      else if (e.key === " " || e.key === "Spacebar") { caidaTotal(); draw(); }
+    });
+    // Juego automático (caída cada X ms)
+    let intervalo = setInterval(function(){
+      if (!juegoTerminado) tick();
+    }, 420);
+    // Asigna el botón de reinicio correctamente
+    document.getElementById('reiniciarBtn').onclick = reiniciar;
+    // Inicia el juego al cargar
+    reiniciar();
+  </script>
+</body>
+</html>
