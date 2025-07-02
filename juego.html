@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Tetrix - Juego Tetris en HTML</title>
+  <style>
+    body { background: #263159; color: #fff; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center;}
+    h2 { margin-top: 32px; }
+    #game { background: #222; margin: 20px; display: grid; grid-template-rows: repeat(20, 24px); grid-template-columns: repeat(10, 24px);}
+    .cell { width: 24px; height: 24px; border: 1px solid #333; box-sizing: border-box;}
+    .empty { background: #222;}
+    .I { background: #03f7ff;}
+    .J { background: #3867d6;}
+    .L { background: #f19066;}
+    .O { background: #ffd32a;}
+    .S { background: #32ff7e;}
+    .T { background: #a55eea;}
+    .Z { background: #fc5c65;}
+    #score { font-size: 1.2em; margin-bottom: 10px;}
+    #controles { margin-bottom: 20px; }
+    #controles span { background: #a91d3a; color: #fff; padding: 4px 8px; border-radius: 5px; margin-right: 5px;}
+    #over { font-size: 2em; color: #ffd32a; display: none; }
+    button { background: #ffd34e; border: none; padding: 6px 14px; border-radius: 7px; font-weight: bold; margin-top: 8px;}
+  </style>
+</head>
+<body>
+  <h2>Tetrix (Tetris en HTML)</h2>
+  <div id="score">Puntaje: 0</div>
+  <div id="controles">
+    <span>←/→</span> Mover | <span>↑</span> Rotar | <span>↓</span> Caída rápida | <span>ESPACIO</span> Caída total
+  </div>
+  <div id="game"></div>
+  <div id="over">¡Juego Terminado!</div>
+  <button onclick="reiniciar()">Reiniciar</button>
+
+  <script>
+    // Constantes del juego
+    const FILAS = 20, COLS = 10;
+    const SHAPES = {
+      I: [[1,1,1,1]],
+      J: [[1,0,0],[1,1,1]],
+      L: [[0,0,1],[1,1,1]],
+      O: [[1,1],[1,1]],
+      S: [[0,1,1],[1,1,0]],
+      T: [[0,1,0],[1,1,1]],
+      Z: [[1,1,0],[0,1,1]],
+    };
+    const COLORS = ["I","J","L","O","S","T","Z"];
+    let grid = [], puntaje = 0, juegoTerminado = false;
+
+    // Pieza actual
+    let pieza, pos, forma, tipo;
+
+    // Inicializa la grilla
+    function crearGrid() {
+      grid = [];
+      for (let r = 0; r < FILAS; r++) {
+        let fila = [];
+        for (let c = 0; c < COLS; c++) fila.push("");
+        grid.push(fila);
+      }
+    }
+
+    // Dibuja la grilla en HTML
+    function draw() {
+      let gameDiv = document.getElementById('game');
+      gameDiv.innerHTML = "";
+      for (let r = 0; r < FILAS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          let div = document.createElement('div');
+          div.className = 'cell ' + (grid[r][c] ? grid[r][c] : 'empty');
+          gameDiv.appendChild(div);
+        }
+      }
+      // Dibuja la pieza activa
+      if (pieza && !juegoTerminado) {
+        for (let r = 0; r < forma.length; r++) {
+          for (let c = 0; c < forma[0].length; c++) {
+            if (forma[r][c]) {
+              let row = pos[0]+r, col = pos[1]+c;
+              if (row >= 0 && row < FILAS && col >= 0 && col < COLS) {
+                let index = row*COLS+col;
+                let cells = gameDiv.getElementsByClassName('cell');
+                cells[index].className = 'cell ' + tipo;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Nueva pieza aleatoria
+    function nuevaPieza() {
+      tipo = COLORS[Math.floor(Math.random()*COLORS.length)];
+      forma = SHAPES[tipo].map(row => row.slice());
+      pos = [0, Math.floor((COLS-forma[0].length)/2)];
+      pieza = {tipo, forma, pos};
+      if (choca(pos, forma)) {
+        juegoTerminado = true;
+        document.getElementById('over').style.display = 'block';
+      }
+    }
+
+    // Chequea colisiones
+    function choca(p, f) {
+      for (let r=0; r<f.length; r++) {
+        for (let c=0; c<f[0].length; c++) {
+          if (f[r][c]) {
+            let nr = p[0]+r, nc = p[1]+c;
+            if (nr<0 || nr>=FILAS || nc<0 || nc>=COLS) return true;
+            if (grid[nr][nc]) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    // Fija la pieza en la grilla
+    function fijar() {
+      for (let r=0; r<forma.length; r++) {
+        for (let c=0; c<forma[0].length; c++) {
+          if (forma[r][c]) {
+            grid[pos[0]+r][pos[1]+c] = tipo;
+          }
+        }
+      }
+    }
+
+    // Elimina filas completas
+    function limpiarFilas() {
+      let filasCompletas = 0;
+      for (let r=FILAS-1; r>=0; r--) {
+        if (grid[r].every(cell => cell)) {
+          grid.splice(r,1);
+          grid.unshift(Array(COLS).fill(""));
+          filasCompletas++;
+          r++;
+        }
+      }
+      if (filasCompletas > 0) puntaje += [0,40,100,300,1200][filasCompletas];
+    }
+
+    // Rota la pieza
+    function rotar() {
+      let nueva = [];
+      let R = forma.length, C = forma[0].length;
+      for (let c=0; c<C; c++) {
+        let row = [];
+        for (let r=R-1; r>=0; r--) row.push(forma[r][c]);
+        nueva.push(row);
+      }
+      if (!choca(pos, nueva)) forma = nueva;
+    }
+
+    // Movimiento
+    function mover(dx,dy) {
+      let nueva = [pos[0]+dy,pos[1]+dx];
+      if (!choca(nueva, forma)) pos
